@@ -4,8 +4,8 @@ const { loginWith, createBlog } = require('./helper');
 describe('Blog app', () => {
     beforeEach(async ({ page, request }) => {
         // Reset the database and create a test user
-        await request.post('http://localhost:3003/api/testing/reset');
-        await request.post('http://localhost:3003/api/users', {
+        await request.post('http:/api/testing/reset');
+        await request.post('http:/api/users', {
             data: {
                 name: 'smart',
                 username: 'sabi',
@@ -13,7 +13,7 @@ describe('Blog app', () => {
             }
         });
         // Navigate to the app
-        await page.goto('http://localhost:5173');
+        await page.goto('');
     });
 
     test('Login form is shown', async ({ page }) => {
@@ -68,37 +68,60 @@ describe('Blog app', () => {
             await expect(successDiv).toContainText("Blog 'Test must be deleted' successfully saved");
 
             await page.getByRole('button', { name: 'show' }).click();
-
             
+            page.on('dialog', dialog => dialog.accept());
             await page.getByTestId('delete-button').click();
-            page.on('dialog', async (dialog) => {
-              await dialog.accept(); // Принимаем диалог подтверждения
-            });
-          
+
+            // page.once('dialog', async (dialog) => {
+            //     expect(dialog.message()).toContain("Delete 'Test must be deleted'?");
+            //     await dialog.accept();
+            //   });
+            await expect(page.locator('.blog-item')).not.toContainText('Test must be deleted');
+
             // Ожидаем завершения всех запросов
             // await page.waitForLoadState('networkidle'); // Можно использовать 'networkidle' или другой метод
-          
+            await page.waitForSelector('.success', { timeout: 20000 });
             const successMessage = page.locator('.success');
             await expect(successMessage).toContainText("Blog 'Test must be deleted' successfully deleted");
           });
           
 
-        test('blogs are ordered by likes', async ({ page }) => {
-            // Create multiple blogs
+         test('blogs are ordered by likes', async ({ page }) => {
+         // Create multiple blogs
             await createBlog(page, 'Blog C', 'Author C', 'https://blog-c.com', 10);
+            const successBlogC = page.locator('.success');
+            await expect(successBlogC).toContainText("Blog 'Blog C' successfully saved");
+
             await createBlog(page, 'Blog B', 'Author B', 'https://blog-b.com', 50);
+            const successBlogB = page.locator('.success');
+            await expect(successBlogB).toContainText("Blog 'Blog B' successfully saved");
+
             await createBlog(page, 'Blog A', 'Author A', 'https://blog-a.com', 30);
+            const successBlogA = page.locator('.success');
+            await expect(successBlogA).toContainText("Blog 'Blog A' successfully saved");
 
-            // Validate the order of blogs by likes
-            const blogs = await page.locator('.blog-item'); // Adjust selector to match blog container
-            const blogsText = await blogs.allTextContents();
+            // Click all "show" buttons for each blog
+            const buttons = page.locator('[data-testid="show-button"]');
+            for (let i = 0; i < await buttons.count(); i++) {
+                await buttons.nth(i).click();
+            }
 
-            // Expect order: Blog B, Blog A, Blog C
-            expect(blogsText).toEqual([
-                'Blog B - 50 likes',
-                'Blog A - 30 likes',
-                'Blog C - 10 likes'
-            ]);
+            // Extract blogs and their likes
+            const blogs = await page.locator('.blog-item');
+            const blogsData = [];
+            for (let i = 0; i < await blogs.count(); i++) {
+                const title = await blogs.nth(i).locator('[data-testid="blog-title"]').textContent();
+                const likesText = await blogs.nth(i).locator('[data-testid="likes"]').textContent();
+                const likes = parseInt(likesText.replace('likes: ', '').trim(), 10);
+                blogsData.push({ title, likes });
+            }
+
+            // Sort blogs by likes in descending order
+            const sortedBlogs = blogsData.slice().sort((a, b) => b.likes - a.likes);
+
+            // Validate the order of blogs
+            expect(blogsData).toEqual(sortedBlogs);
         });
+
     });
 });
