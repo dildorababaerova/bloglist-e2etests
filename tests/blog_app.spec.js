@@ -83,7 +83,7 @@ describe('Blog app', () => {
           });
           
 
-          test.only('blogs are ordered by likes', async ({ page }) => {
+          test('blogs are ordered by likes', async ({ page }) => {
             await createBlog(page, 'Blog C', 'Author C', 'https://blog-c.com', 10);
             const successBlogC = page.locator('.success');
             await expect(successBlogC).toContainText("Blog 'Blog C' successfully saved");
@@ -97,9 +97,6 @@ describe('Blog app', () => {
             await expect(successBlogA).toContainText("Blog 'Blog A' successfully saved");
         
             await page.waitForLoadState('networkidle');
-            // const blogItems = page.locator('[data-testid="blog-title"]');
-            // await blogItems.waitForSelector('[data-testid="blog-title"]', { state: 'visible', timeout: 30000 });
-            // await blogItems.waitFor({ state: 'visible', timeout: 30000 });
         
             const showButtons = page.locator('[data-testid="show-button"]');
             const buttonCount = await showButtons.count();
@@ -133,6 +130,20 @@ describe('Blog app', () => {
             await expect(displayedTitles[0]).toEqual(sortedBlogs[0].title);
             await expect(displayedTitles[1]).toEqual(sortedBlogs[1].title);
             await expect(displayedTitles[2]).toEqual(sortedBlogs[2].title);
+        });
+
+        test.only('a blog can be liked', async ({ page }) => {
+            await createBlog(page, 'Test blog created', 'babisha', 'www.test.com', 50);
+
+            const successDiv = page.locator('.success');
+            await expect(successDiv).toContainText("Blog 'Test blog created' successfully saved");
+
+            await page.locator('[data-testid="show-button"]').click();
+            const likesValue = await page.getByText('50');
+            await expect(likesValue).toBeVisible();
+
+            await page.locator('[data-testid= "like-button"]').click();
+            await expect(page.getByText('51')).toBeVisible();
         });
     });
 });
