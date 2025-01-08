@@ -96,8 +96,10 @@ describe('Blog app', () => {
             const successBlogA = page.locator('.success');
             await expect(successBlogA).toContainText("Blog 'Blog A' successfully saved");
         
-            const blogItems = page.locator('[data-testid="blog-title"]');
-            await blogItems.first().waitFor({ state: 'visible', timeout: 10000 });
+            await page.waitForLoadState('networkidle');
+            // const blogItems = page.locator('[data-testid="blog-title"]');
+            // await blogItems.waitForSelector('[data-testid="blog-title"]', { state: 'visible', timeout: 30000 });
+            // await blogItems.waitFor({ state: 'visible', timeout: 30000 });
         
             const showButtons = page.locator('[data-testid="show-button"]');
             const buttonCount = await showButtons.count();
@@ -105,7 +107,7 @@ describe('Blog app', () => {
                 await showButtons.nth(i).click();
             }
         
-            console.log('Количество кнопок "show":', buttonCount);
+            console.log('Buttons "show":', buttonCount);
         
             const blogTitles = await page.locator('[data-testid="blog-title"]').allTextContents();
             const blogLikes = await page.locator('[data-testid="blog-likes"]').allTextContents();
@@ -113,16 +115,24 @@ describe('Blog app', () => {
             console.log('blogLikes:', blogLikes);
         
             const blogsData = blogTitles.map((title, index) => ({
-                title: title.trim(),
-                likes: parseInt(blogLikes[index].replace(/likes:|like/g, '').trim(), 10), // Удаляем "likes:" и "like"
+                title: title,
+                likes: Number(blogLikes[index].replace(/[^\d]/g, ''))
+                // likes: parseInt(blogLikes[index].replace(/likes:|like/g, '').trim(), 10), //delete "likes:" and "like"
             }));
 
             console.log('blogsData:', blogsData);
         
             const sortedBlogs = [...blogsData].sort((a, b) => b.likes - a.likes);
             console.log('sortedBlogs:', sortedBlogs);
-        
-            await expect(blogsData).toEqual(sortedBlogs);
+
+            await page.reload();
+
+            const displayedTitles = await page.locator('[data-testid="blog-title"]').allTextContents();
+            console.log('displayedTitles:', displayedTitles);    
+
+            await expect(displayedTitles[0]).toEqual(sortedBlogs[0].title);
+            await expect(displayedTitles[1]).toEqual(sortedBlogs[1].title);
+            await expect(displayedTitles[2]).toEqual(sortedBlogs[2].title);
         });
     });
 });
